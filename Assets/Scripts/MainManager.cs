@@ -3,61 +3,98 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class MainManager : MonoBehaviour
 {
+
     public Brick BrickPrefab;
     public int LineCount = 6;
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text HighScoreText;
+    public InputField nameInput;
+    public Text fname;
     public GameObject GameOverText;
-    
+
     private bool m_Started = false;
     private int m_Points;
-    
+    private int high_score;
+
     private bool m_GameOver = false;
 
+ 
+
+    [SerializeField]
+    bool menu = false;
+
     
+
     // Start is called before the first frame update
     void Start()
     {
-        const float step = 0.6f;
-        int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
-        for (int i = 0; i < LineCount; ++i)
+        if (!menu)
         {
-            for (int x = 0; x < perLine; ++x)
+            const float step = 0.6f;
+            int perLine = Mathf.FloorToInt(4.0f / step);
+
+            int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
+            for (int i = 0; i < LineCount; ++i)
             {
-                Vector3 position = new Vector3(-1.5f + step * x, 2.5f + i * 0.3f, 0);
-                var brick = Instantiate(BrickPrefab, position, Quaternion.identity);
-                brick.PointValue = pointCountArray[i];
-                brick.onDestroyed.AddListener(AddPoint);
+                for (int x = 0; x < perLine; ++x)
+                {
+                    Vector3 position = new Vector3(-1.5f + step * x, 2.5f + i * 0.3f, 0);
+                    var brick = Instantiate(BrickPrefab, position, Quaternion.identity);
+                    brick.PointValue = pointCountArray[i];
+                    brick.onDestroyed.AddListener(AddPoint);
+                   
+                }
             }
+            DataSaver.Instance.LoadData();
+            updateHighScore();
+            fname.text = DataSaver.Instance.playerName;
         }
+        if (menu)
+        {
+            DataSaver.Instance.LoadData();
+            nameInput.onEndEdit.AddListener(UpdateName);
+        }
+
+        
+    }
+
+    public void UpdateName(string arg0)
+    {
+        DataSaver.Instance.UpdateName(arg0);
     }
 
     private void Update()
     {
-        if (!m_Started)
+        if (!menu)
         {
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (!m_Started)
             {
-                m_Started = true;
-                float randomDirection = Random.Range(-1.0f, 1.0f);
-                Vector3 forceDir = new Vector3(randomDirection, 1, 0);
-                forceDir.Normalize();
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    m_Started = true;
+                    float randomDirection = Random.Range(-1.0f, 1.0f);
+                    Vector3 forceDir = new Vector3(randomDirection, 1, 0);
+                    forceDir.Normalize();
 
-                Ball.transform.SetParent(null);
-                Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
+                    Ball.transform.SetParent(null);
+                    Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
+                }
             }
-        }
-        else if (m_GameOver)
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
+            else if (m_GameOver)
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    DataSaver.Instance.SaveData(m_Points, DataSaver.Instance.playerName);
+                    SceneManager.LoadScene(0);
+                }
             }
         }
     }
@@ -70,7 +107,32 @@ public class MainManager : MonoBehaviour
 
     public void GameOver()
     {
-        m_GameOver = true;
+        m_GameOver = true;        
         GameOverText.SetActive(true);
     }
+
+
+    public void updateHighScore()
+    {
+        if (HighScoreText != null)
+        {
+            HighScoreText.text = "Best Score :" + DataSaver.Instance.high_score;
+        }
+    }
+
+
+    public void StartGame()
+    {
+        SceneManager.LoadScene(1);
+    }
+    
+    public void QuitGame()
+    {
+#if UNITY_EDITOR
+        EditorApplication.ExitPlaymode();
+#else
+       Application.Quit();
+#endif
+    }
+
 }
